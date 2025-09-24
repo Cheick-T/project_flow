@@ -9,7 +9,7 @@ services:
     environment:
       DJANGO_ENV: production
       DJANGO_DEBUG: "1"
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,"*.onrender.com"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,.onrender.com
       RUN_MIGRATIONS: "true"
       IMPORT_DUMPS: "true"
       DJANGO_SECRET_KEY: 75259bf3f8e38c03d0a60e5534e0768e4f26a5a25b922a2a89d3ddc17eb70370
