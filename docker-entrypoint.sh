@@ -3,6 +3,9 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+export DJANGO_SETTINGS_MODULE="${DJANGO_SETTINGS_MODULE:-dfv_project.settings.production}"
+echo "Using settings module: ${DJANGO_SETTINGS_MODULE}"
+
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   echo "Applying database migrations"
   python manage.py migrate --noinput
