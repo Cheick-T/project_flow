@@ -52,3 +52,6 @@ htmlcov/
 # Git metadata (redundant but harmless)
 .git/
 
+PWD
+nom_colonnes.txt
+convert_valeurs_foncieres.py
