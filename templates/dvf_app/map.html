@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Carte DVF interactive{% endblock %}
 {% block header_title %}Carte Leaflet des transactions{% endblock %}
@@ -6,82 +7,17 @@
 
 {% block extra_head %}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        #dvf-map {
-            width: 100%;
-            min-height: clamp(420px, 65vh, 720px);
-            border-radius: 18px;
-            overflow: hidden;
-            box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.1);
-        }
-
-        .map-layout {
-            display: grid;
-            grid-template-columns: minmax(250px, 320px) 1fr;
-            gap: 1.5rem;
-        }
-
-        .map-summary {
-            display: flex;
-            flex-direction: column;
-            gap: 1.25rem;
-        }
-
-        .stat-card {
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.85);
-            border: 1px solid rgba(79, 70, 229, 0.15);
-            padding: 1rem 1.25rem;
-            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
-        }
-
-        .stat-card h3 {
-            margin: 0 0 0.4rem;
-            font-size: 0.95rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: rgba(79, 70, 229, 0.85);
-        }
-
-        .stat-card p {
-            margin: 0;
-            font-size: 1.05rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .legend {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-
-        .legend span {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .legend .dot {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 999px;
-        }
-
-        @media (max-width: 1024px) {
-            .map-layout {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'dvf_app/css/map.css' %}">
+    <link rel="stylesheet" href="{% static 'dvf_app/css/charts.css' %}">
 {% endblock %}
 
 {% block content %}
-    <section class="glass-panel">
+    <section
+        class="glass-panel"
+        id="dvf-map-page"
+        data-heatmap-url="{% url 'dvf_app:heatmap-data' %}"
+        data-commune-options-url="{% url 'dvf_app:commune-options' %}"
+    >
         <form id="filters" class="filter-grid" autocomplete="off">
             <div>
                 <label for="department-select">Departement</label>
@@ -115,218 +51,82 @@
                     <p>Chargement...</p>
                 </div>
                 <div class="stat-card legend">
-                    <span><span class="dot" style="background: rgba(79, 70, 229, 0.75);"></span> Forte intensite</span>
-                    <span><span class="dot" style="background: rgba(129, 140, 248, 0.65);"></span> Intensite moyenne</span>
-                    <span><span class="dot" style="background: rgba(196, 181, 253, 0.55);"></span> Faible intensite</span>
+                    <span><span class="dot dot-strong"></span> Forte intensite</span>
+                    <span><span class="dot dot-medium"></span> Intensite moyenne</span>
+                    <span><span class="dot dot-light"></span> Faible intensite</span>
                 </div>
             </aside>
             <div id="dvf-map"></div>
         </div>
+        <section
+            class="charts-section"
+            id="dvf-charts"
+            data-charts-url="{% url 'dvf_app:charts-data' %}"
+        >
+            <div class="charts-section__header">
+                <div>
+                    <h2>Graphiques couples</h2>
+                    <p id="charts-context-label">France entiere</p>
+                </div>
+                <div class="charts-section__badges" id="charts-badges"></div>
+            </div>
+            <div class="charts-grid">
+                <article class="chart-card" data-chart="top-communes">
+                    <div class="chart-card__header">
+                        <div>
+                            <h3>Top communes</h3>
+                            <p class="chart-card__subtitle" id="top-communes-scope">France entiere</p>
+                        </div>
+                        <div class="chart-card__actions" role="group" aria-label="Choix de metrique">
+                            <button type="button" class="chart-toggle is-active" data-metric="sales_count">Nb ventes</button>
+                            <button type="button" class="chart-toggle" data-metric="total_value">Volume ventes</button>
+                        </div>
+                    </div>
+                    <div class="chart-card__body">
+                        <canvas aria-label="Classement des communes" role="img"></canvas>
+                        <div class="chart-placeholder">Chargement...</div>
+                    </div>
+                </article>
+                <article class="chart-card" data-chart="time-series">
+                    <div class="chart-card__header">
+                        <h3>Serie temporelle</h3>
+                        <p class="chart-card__subtitle">Volume mensuel</p>
+                    </div>
+                    <div class="chart-card__body">
+                        <canvas aria-label="Serie temporelle des ventes" role="img"></canvas>
+                        <div class="chart-placeholder">Chargement...</div>
+                    </div>
+                </article>
+                <article class="chart-card" data-chart="price-boxplot">
+                    <div class="chart-card__header">
+                        <h3>Prix au m2</h3>
+                        <p class="chart-card__subtitle">Distribution par type</p>
+                    </div>
+                    <div class="chart-card__body">
+                        <canvas aria-label="Distribution des prix" role="img"></canvas>
+                        <div class="chart-placeholder">Chargement...</div>
+                    </div>
+                </article>
+                <article class="chart-card" data-chart="mutation-stack">
+                    <div class="chart-card__header">
+                        <h3>Natures de mutation</h3>
+                        <p class="chart-card__subtitle">Repartition par type de bien</p>
+                    </div>
+                    <div class="chart-card__body">
+                        <canvas aria-label="Repartition des natures de mutation" role="img"></canvas>
+                        <div class="chart-placeholder">Chargement...</div>
+                    </div>
+                </article>
+            </div>
+        </section>
     </section>
 {% endblock %}
 
 {% block extra_scripts %}
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        (function() {
-            const heatmapUrl = "{% url 'dvf_app:heatmap-data' %}";
-            const communeOptionsUrl = "{% url 'dvf_app:commune-options' %}";
-
-            const departmentSelect = document.getElementById('department-select');
-            const communeSelect = document.getElementById('commune-select');
-            const filtersForm = document.getElementById('filters');
-            const statTotal = document.querySelector('#stat-total p');
-            const statEntitiesCard = document.getElementById('stat-entities');
-            const statEntitiesTitle = document.getElementById('stat-entities-title');
-            const statEntitiesValue = statEntitiesCard.querySelector('p');
-
-            function formatNumber(value) {
-                return new Intl.NumberFormat('fr-FR').format(value || 0);
-            }
-
-            function getColorFactor(scale) {
-                if (scale >= 0.66) {
-                    return 'rgba(79, 70, 229, 0.9)';
-                }
-                if (scale >= 0.33) {
-                    return 'rgba(129, 140, 248, 0.8)';
-                }
-                return 'rgba(196, 181, 253, 0.75)';
-            }
-
-            const map = L.map('dvf-map', {
-                zoomControl: false,
-                minZoom: 4,
-                maxZoom: 18,
-            }).setView([46.65, 2.5], 6);
-
-            L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
-            }).addTo(map);
-
-            const markersLayer = L.layerGroup().addTo(map);
-            let latestRequest = 0;
-
-            function renderMarkers(payload) {
-                const summary = payload?.summary || {};
-                const points = payload?.points || [];
-                const level = summary.level || 'commune';
-
-                markersLayer.clearLayers();
-
-                if (!points.length) {
-                    statTotal.textContent = 'Aucune transaction dans ce perimetre';
-                    statEntitiesTitle.textContent = level === 'department' ? 'Departements representes' : 'Communes representees';
-                    statEntitiesValue.textContent = level === 'department' ? '0 departement' : '0 commune';
-                    map.setView([46.65, 2.5], 6);
-                    return;
-                }
-
-                const maxSales = summary.max_sales || 1;
-                statTotal.textContent = formatNumber(summary.total_sales) + ' ventes';
-                if (level === 'department') {
-                    statEntitiesTitle.textContent = 'Departements representes';
-                    statEntitiesValue.textContent = formatNumber(summary.entity_count) + ' departements';
-                } else {
-                    statEntitiesTitle.textContent = 'Communes representees';
-                    statEntitiesValue.textContent = formatNumber(summary.entity_count) + ' communes';
-                }
-
-                const bounds = [];
-
-                points.forEach(item => {
-                    if (item.centroid_lat == null || item.centroid_lon == null) {
-                        return;
-                    }
-                    const intensity = item.sales_count || 0;
-                    const scale = maxSales > 0 ? Math.sqrt(intensity / maxSales) : 0;
-                    const fillColor = getColorFactor(scale);
-                    const baseRadius = level === 'department' ? 4 : 6;
-                    const radius = baseRadius + scale * (level === 'department' ? 12 : 24);
-                    const fillOpacity = 0.35 + 0.4 * scale;
-
-                    const marker = L.circleMarker([item.centroid_lat, item.centroid_lon], {
-                        radius,
-                        fillColor,
-                        color: 'rgba(79, 70, 229, 0.55)',
-                        weight: 1,
-                        fillOpacity,
-                    });
-
-                    let popupHtml = '';
-                    if (level === 'department') {
-                        popupHtml = `
-                            <div style="min-width: 220px;">
-                                <div style="font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem;">${item.name}</div>
-                                <div style="font-size: 0.85rem; color: #475467;">Code departement ${item.code}</div>
-                                <div style="margin-top: 0.75rem;"><strong>Transactions DVF :</strong> ${formatNumber(intensity)}</div>
-                                <div><strong>Communes couvertes :</strong> ${formatNumber(item.commune_count || 0)}</div>
-                                <div><strong>Adresses BAN :</strong> ${formatNumber(item.address_count || 0)}</div>
-                            </div>
-                        `;
-                    } else {
-                        const postalCodes = item.postal_codes && item.postal_codes.length ? `<div><strong>Codes postaux :</strong> ${item.postal_codes.join(', ')}</div>` : '';
-                        popupHtml = `
-                            <div style="min-width: 220px;">
-                                <div style="font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem;">${item.name}</div>
-                                <div style="font-size: 0.85rem; color: #475467;">Departement ${item.department_code}</div>
-                                <div style="margin-top: 0.75rem;"><strong>Transactions DVF :</strong> ${formatNumber(intensity)}</div>
-                                <div><strong>Adresses BAN recensees :</strong> ${formatNumber(item.address_count || 0)}</div>
-                                ${postalCodes}
-                            </div>
-                        `;
-                    }
-
-                    marker.bindPopup(popupHtml.trim());
-                    marker.addTo(markersLayer);
-                    bounds.push([item.centroid_lat, item.centroid_lon]);
-                });
-
-                if (bounds.length) {
-                    map.fitBounds(bounds, { padding: [40, 40] });
-                }
-            }
-
-            async function loadHeatmap(params) {
-                const requestId = ++latestRequest;
-                const url = new URL(heatmapUrl, window.location.origin);
-                Object.entries(params || {}).forEach(([key, value]) => {
-                    if (value) {
-                        url.searchParams.set(key, value);
-                    }
-                });
-
-                statTotal.textContent = 'Chargement...';
-                statEntitiesTitle.textContent = 'Chargement';
-                statEntitiesValue.textContent = '...';
-
-                try {
-                    const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
-                    if (!response.ok) {
-                        throw new Error('Statut ' + response.status);
-                    }
-                    const payload = await response.json();
-                    if (requestId !== latestRequest) {
-                        return;
-                    }
-                    renderMarkers(payload);
-                } catch (error) {
-                    console.error('Erreur lors du chargement des donnees DVF', error);
-                    statTotal.textContent = 'Erreur de chargement';
-                    statEntitiesTitle.textContent = 'Communes representees';
-                    statEntitiesValue.textContent = '-';
-                    markersLayer.clearLayers();
-                }
-            }
-
-            async function refreshCommuneOptions(departmentCode) {
-                communeSelect.innerHTML = '<option value="">Toutes les communes</option>';
-                communeSelect.disabled = true;
-
-                if (!departmentCode) {
-                    return;
-                }
-
-                try {
-                    const url = new URL(communeOptionsUrl, window.location.origin);
-                    url.searchParams.set('department', departmentCode);
-                    const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
-                    if (!response.ok) {
-                        throw new Error('Statut ' + response.status);
-                    }
-                    const payload = await response.json();
-                    payload.communes.forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item.code_commune;
-                        option.textContent = `${item.code_commune} - ${item.name}`;
-                        communeSelect.appendChild(option);
-                    });
-                    communeSelect.disabled = false;
-                } catch (error) {
-                    console.error('Erreur lors du chargement des communes', error);
-                }
-            }
-
-            departmentSelect.addEventListener('change', event => {
-                const departmentCode = event.target.value;
-                communeSelect.value = '';
-                refreshCommuneOptions(departmentCode);
-                loadHeatmap({ department: departmentCode });
-            });
-
-            filtersForm.addEventListener('submit', event => {
-                event.preventDefault();
-                const params = {
-                    department: departmentSelect.value,
-                    commune: communeSelect.value,
-                };
-                loadHeatmap(params);
-            });
-
-            loadHeatmap({});
-        })();
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.5/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4.4.0"></script>
+    <script src="{% static 'dvf_app/js/map.js' %}"></script>
+    <script src="{% static 'dvf_app/js/charts.js' %}"></script>
 {% endblock %}

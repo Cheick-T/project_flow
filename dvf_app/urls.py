@@ -8,4 +8,5 @@ urlpatterns = [
     path("", views.LeafletMapView.as_view(), name="map"),
     path("api/heatmap/", views.heatmap_data, name="heatmap-data"),
     path("api/communes/", views.commune_options, name="commune-options"),
+    path("api/charts/", views.charts_data, name="charts-data"),
 ]

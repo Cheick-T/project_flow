@@ -1,28 +1,13 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from django.db.models import Count
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
 
 from .models import CleanDVFRecord, Commune, Department
-
-
-def normalize_commune_code(department_code: Optional[str], commune_code: Optional[str]) -> Optional[str]:
-    dept = (department_code or "").strip().upper()
-    commune = (commune_code or "").strip().upper()
-    if not dept or not commune:
-        return None
-    if len(commune) >= 5:
-        return commune
-    if dept in {"2A", "2B"}:
-        return f"{dept}{commune.zfill(3)}"
-    if dept.startswith("97") or dept.startswith("98"):
-        return f"{dept}{commune.zfill(2)}"
-    return f"{dept.zfill(2)}{commune.zfill(3)}"
-
+from .services.charts import DEFAULT_TOP_COMMUNES, build_chart_payload
+from .utils import normalize_commune_code, split_commune_code
 
 class LeafletMapView(TemplateView):
     template_name = "dvf_app/map.html"
@@ -53,19 +38,16 @@ def heatmap_data(request):
     points = []
 
     if commune_param:
-        if commune_param.startswith(("2A", "2B")):
-            dept_part = commune_param[:2]
-            commune_part = commune_param[2:]
-        elif commune_param.startswith("97") or commune_param.startswith("98"):
-            dept_part = commune_param[:3]
-            commune_part = commune_param[3:]
+        dept_part, commune_part = split_commune_code(commune_param)
+        if dept_part and commune_part is not None:
+            records = records.filter(
+                code_departement=dept_part,
+                code_commune=commune_part,
+            )
+            if not department_param:
+                department_param = dept_part
         else:
-            dept_part = commune_param[:2]
-            commune_part = commune_param[2:]
-        records = records.filter(
-            code_departement=dept_part,
-            code_commune=commune_part.lstrip("0") or "0",
-        )
+            records = records.none()
     elif department_param:
         records = records.filter(code_departement=department_param)
     else:
@@ -186,3 +168,15 @@ def commune_options(request):
         for commune in communes
     ]
     return JsonResponse({"communes": options})
+
+@require_GET
+def charts_data(request):
+    department_param = (request.GET.get("department") or "").strip().upper()
+    commune_param = (request.GET.get("commune") or "").strip().upper()
+    try:
+        top_limit = int(request.GET.get("top_limit") or DEFAULT_TOP_COMMUNES)
+    except ValueError:
+        top_limit = DEFAULT_TOP_COMMUNES
+    payload = build_chart_payload(department_param, commune_param, top_limit)
+    return JsonResponse(payload)
+

@@ -1,0 +1,77 @@
+:root {
+    color-scheme: light dark;
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.35);
+    --accent: #4f46e5;
+    --accent-soft: rgba(79, 70, 229, 0.15);
+    --text-primary: #101828;
+    --text-secondary: #475467;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Inter", "Segoe UI", sans-serif;
+    color: var(--text-primary);
+    background: radial-gradient(circle at 20% 20%, rgba(79, 70, 229, 0.25), transparent 40%),
+                radial-gradient(circle at 80% 10%, rgba(236, 72, 153, 0.2), transparent 35%),
+                linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    padding: 1.5rem 2rem 1rem;
+    color: #fff;
+    background: linear-gradient(120deg, rgba(79, 70, 229, 0.9), rgba(236, 72, 153, 0.8));
+    box-shadow: 0 25px 45px rgba(15, 23, 42, 0.12);
+}
+
+header h1 {
+    margin: 0 0 0.25rem;
+    font-weight: 600;
+    font-size: clamp(1.5rem, 2vw, 2rem);
+}
+
+header p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+main {
+    flex: 1;
+    padding: 1.5rem 2rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.glass-panel {
+    position: relative;
+    border-radius: 18px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(16px) saturate(140%);
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+    padding: clamp(1rem, 3vw, 2rem);
+}
+
+footer {
+    padding: 1rem 2rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+    header,
+    main,
+    footer {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+}

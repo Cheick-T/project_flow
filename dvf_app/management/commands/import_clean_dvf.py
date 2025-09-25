@@ -85,7 +85,7 @@ class Command(BaseCommand):
             if isinstance(field, models.DecimalField):
                 try:
                     return Decimal(raw_value)
-                except Exception as exc:  # pylint: disable=broad-except
+                except Exception as exc:  
                     raise CommandError(f"Invalid decimal '{raw_value}'") from exc
             if isinstance(field, models.IntegerField):
                 try:
