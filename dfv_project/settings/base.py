@@ -9,6 +9,7 @@ import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent
 
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -54,7 +55,7 @@ ROOT_URLCONF = "dfv_project.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [PROJECT_ROOT / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -104,9 +105,9 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = PROJECT_ROOT / "staticfiles"
 
-_static_dir = BASE_DIR / "static"
+_static_dir = PROJECT_ROOT / "static"
 STATICFILES_DIRS = [_static_dir] if _static_dir.exists() else []
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
