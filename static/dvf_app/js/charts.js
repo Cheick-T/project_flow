@@ -638,6 +638,9 @@
             return;
         }
         Object.values(cards).forEach((card) => setCardState(card, 'loading', 'Chargement...'));
+        if (window.DVF && typeof window.DVF.setKpiMetrics === 'function') {
+            window.DVF.setKpiMetrics(null, 'loading');
+        }
         if (state.controller) {
             state.controller.abort();
         }
@@ -669,6 +672,9 @@
                 }
                 state.lastPayload = payload;
                 updateSelectionMeta(payload);
+                if (window.DVF && typeof window.DVF.setKpiMetrics === 'function') {
+                    window.DVF.setKpiMetrics(payload.metrics || null, 'ready');
+                }
                 renderTopChart(payload.top_communes);
                 renderTimeSeries(payload.time_series);
                 renderBoxplot(payload.price_boxplot);
@@ -680,6 +686,9 @@
                 }
                 if (state.controller === controller) {
                     state.controller = null;
+                }
+                if (window.DVF && typeof window.DVF.setKpiMetrics === 'function') {
+                    window.DVF.setKpiMetrics(null, 'error');
                 }
                 console.error('Erreur lors du chargement des graphiques DVF', error);
                 Object.values(cards).forEach((card) => setCardState(card, 'error', 'Erreur de chargement'));

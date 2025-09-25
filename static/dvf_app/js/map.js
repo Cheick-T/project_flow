@@ -1,8 +1,11 @@
+
 (function () {
     const page = document.getElementById('dvf-map-page');
     if (!page) {
         return;
     }
+
+    const DVF = window.DVF || (window.DVF = {});
 
     const heatmapUrl = page.dataset.heatmapUrl;
     const communeOptionsUrl = page.dataset.communeOptionsUrl;
@@ -13,13 +16,107 @@
         [41.0, 9.7],
     ];
 
+    const headerKpis = {
+        totalSales: document.getElementById('kpi-total-sales'),
+        totalValue: document.getElementById('kpi-total-value'),
+        medianPrice: document.getElementById('kpi-median-price'),
+        period: document.getElementById('kpi-period'),
+    };
+
+    const summaryKpis = {
+        totalSales: document.getElementById('summary-total-sales'),
+        totalValue: document.getElementById('summary-total-value'),
+        medianPrice: document.getElementById('summary-median-price'),
+    };
+
     const elements = {
         departmentSelect: document.getElementById('department-select'),
         communeSelect: document.getElementById('commune-select'),
         filtersForm: document.getElementById('filters'),
-        statTotal: document.querySelector('#stat-total p'),
-        statEntitiesTitle: document.getElementById('stat-entities-title'),
-        statEntitiesValue: document.querySelector('#stat-entities p'),
+    };
+
+    const numberFormatter = new Intl.NumberFormat('fr-FR');
+    const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
+        month: 'short',
+        year: 'numeric',
+    });
+
+    function setText(node, value) {
+        if (node) {
+            node.textContent = value;
+        }
+    }
+
+    function formatNumber(value) {
+        return numberFormatter.format(value || 0);
+    }
+
+    function formatEuro(value) {
+        if (value == null) {
+            return null;
+        }
+        return `${formatNumber(Math.round(value))} €`;
+    }
+
+    function formatPricePerSqm(value) {
+        if (value == null) {
+            return null;
+        }
+        return `${formatNumber(Math.round(value))} €/m²`;
+    }
+
+    function formatDateRange(minIso, maxIso) {
+        if (!minIso && !maxIso) {
+            return null;
+        }
+        const minDate = minIso ? new Date(minIso) : null;
+        const maxDate = maxIso ? new Date(maxIso) : null;
+        if (minDate && maxDate) {
+            if (minDate.getTime() === maxDate.getTime()) {
+                return dateFormatter.format(minDate);
+            }
+            return `${dateFormatter.format(minDate)} – ${dateFormatter.format(maxDate)}`;
+        }
+        const target = minDate || maxDate;
+        return target ? dateFormatter.format(target) : null;
+    }
+
+    function updateKpiWidgets(status = 'ready', metrics = null) {
+        const placeholder = status === 'loading' ? '...' : '—';
+        const hasMetrics = status === 'ready' && metrics;
+
+        const totalSalesText = hasMetrics
+            ? formatNumber(metrics.total_sales || 0)
+            : placeholder;
+
+        const totalValueText = hasMetrics
+            ? (metrics.total_value == null
+                ? '—'
+                : formatEuro(metrics.total_value) || '0 €')
+            : placeholder;
+
+        const medianPriceText = hasMetrics
+            ? (metrics.median_price_sqm == null
+                ? '—'
+                : formatPricePerSqm(metrics.median_price_sqm))
+            : placeholder;
+
+        const periodText = hasMetrics
+            ? (formatDateRange(metrics.date_min, metrics.date_max) || '—')
+            : placeholder;
+
+        setText(headerKpis.totalSales, totalSalesText);
+        setText(headerKpis.totalValue, totalValueText);
+        setText(headerKpis.medianPrice, medianPriceText);
+        setText(headerKpis.period, periodText);
+
+        setText(summaryKpis.totalSales, totalSalesText);
+        setText(summaryKpis.totalValue, totalValueText);
+        setText(summaryKpis.medianPrice, medianPriceText);
+    }
+
+    DVF.setKpiMetrics = (metrics, status = 'ready') => {
+        updateKpiWidgets(status, metrics);
     };
 
     const map = L.map('dvf-map', {
@@ -39,10 +136,6 @@
 
     const markersLayer = L.layerGroup().addTo(map);
     let latestRequestId = 0;
-
-    function formatNumber(value) {
-        return new Intl.NumberFormat('fr-FR').format(value || 0);
-    }
 
     function getFillColor(scale) {
         if (scale >= 0.66) {
@@ -90,28 +183,8 @@
         `;
     }
 
-    function resetView(level) {
-        elements.statTotal.textContent = 'Aucune transaction dans ce perimetre';
-        elements.statEntitiesTitle.textContent = level === 'department'
-            ? 'Departements representes'
-            : 'Communes representees';
-        elements.statEntitiesValue.textContent = level === 'department'
-            ? '0 departement'
-            : '0 commune';
+    function resetMapView() {
         map.fitBounds(FRANCE_BOUNDS, { padding: [30, 30] });
-    }
-
-    function updateSummary(summary) {
-        const level = summary.level || 'commune';
-        elements.statTotal.textContent = `${formatNumber(summary.total_sales)} ventes`;
-
-        const label = level === 'department'
-            ? 'Departements representes'
-            : 'Communes representees';
-        elements.statEntitiesTitle.textContent = label;
-
-        const unit = level === 'department' ? 'departements' : 'communes';
-        elements.statEntitiesValue.textContent = `${formatNumber(summary.entity_count)} ${unit}`;
     }
 
     function renderMarkers(payload) {
@@ -119,14 +192,14 @@
         const points = payload?.points || [];
         const level = summary.level || 'commune';
 
+        updateKpiWidgets('ready', summary);
+
         markersLayer.clearLayers();
 
         if (!points.length) {
-            resetView(level);
+            resetMapView();
             return;
         }
-
-        updateSummary(summary);
 
         const bounds = [];
         const maxSales = summary.max_sales || 1;
@@ -170,9 +243,7 @@
             }
         });
 
-        elements.statTotal.textContent = 'Chargement...';
-        elements.statEntitiesTitle.textContent = 'Chargement';
-        elements.statEntitiesValue.textContent = '...';
+        updateKpiWidgets('loading');
 
         try {
             const response = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
@@ -186,11 +257,9 @@
             renderMarkers(payload);
         } catch (error) {
             console.error('Erreur lors du chargement des donnees DVF', error);
-            elements.statTotal.textContent = 'Erreur de chargement';
-            elements.statEntitiesTitle.textContent = 'Communes representees';
-            elements.statEntitiesValue.textContent = '-';
+            updateKpiWidgets('error');
             markersLayer.clearLayers();
-            map.fitBounds(FRANCE_BOUNDS, { padding: [30, 30] });
+            resetMapView();
         }
     }
 

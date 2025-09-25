@@ -6,7 +6,11 @@ from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
 
 from .models import CleanDVFRecord, Commune, Department
-from .services.charts import DEFAULT_TOP_COMMUNES, build_chart_payload
+from .services.charts import (
+    DEFAULT_TOP_COMMUNES,
+    build_chart_payload,
+    compute_selection_metrics,
+)
 from .utils import normalize_commune_code, split_commune_code
 
 class LeafletMapView(TemplateView):
@@ -52,6 +56,8 @@ def heatmap_data(request):
         records = records.filter(code_departement=department_param)
     else:
         level = "department"
+
+    metrics = compute_selection_metrics(records)
 
     if level == "department":
         department_totals = (
@@ -125,6 +131,7 @@ def heatmap_data(request):
         "max_sales": max_sales,
         "level": level,
     }
+    summary.update(metrics)
 
     if department_param:
         department = (

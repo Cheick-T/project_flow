@@ -12,6 +12,42 @@
 {% endblock %}
 
 {% block content %}
+    <section class="dashboard-kpis" id="dvf-kpi-bar">
+        <article class="kpi-card" data-kpi="total-sales">
+            <span class="kpi-icon" aria-hidden="true">🧮</span>
+            <div class="kpi-copy">
+                <p class="kpi-label">Total ventes</p>
+                <p class="kpi-value" id="kpi-total-sales">...</p>
+            </div>
+        </article>
+        <article class="kpi-card" data-kpi="total-value">
+            <span class="kpi-icon" aria-hidden="true">💶</span>
+            <div class="kpi-copy">
+                <p class="kpi-label">Total valeur fonciere</p>
+                <p class="kpi-value" id="kpi-total-value">...</p>
+            </div>
+        </article>
+        <article class="kpi-card" data-kpi="median-price">
+            <span class="kpi-icon" aria-hidden="true">📈</span>
+            <div class="kpi-copy">
+                <p class="kpi-label">Prix/m² bati (mediane)</p>
+                <p class="kpi-value" id="kpi-median-price">...</p>
+            </div>
+        </article>
+        <article class="kpi-card" data-kpi="period">
+            <span class="kpi-icon" aria-hidden="true">📅</span>
+            <div class="kpi-copy">
+                <p class="kpi-label">Periode active</p>
+                <p class="kpi-value" id="kpi-period">...</p>
+            </div>
+        </article>
+    </section>
+    <section
+        class="glass-panel"
+        id="dvf-map-page"
+        data-heatmap-url="{% url 'dvf_app:heatmap-data' %}"
+        data-commune-options-url="{% url 'dvf_app:commune-options' %}"
+    >
     <section
         class="glass-panel"
         id="dvf-map-page"
@@ -42,13 +78,28 @@
 
         <div class="map-layout">
             <aside class="map-summary">
-                <div class="stat-card" id="stat-total">
-                    <h3>Total des ventes</h3>
-                    <p>Chargement...</p>
-                </div>
-                <div class="stat-card" id="stat-entities">
-                    <h3 id="stat-entities-title">Communes representees</h3>
-                    <p>Chargement...</p>
+                <div class="summary-kpis">
+                    <article class="stat-card kpi-mini" data-kpi="summary-total-sales">
+                        <span class="kpi-icon" aria-hidden="true">🧮</span>
+                        <div class="kpi-copy">
+                            <p class="kpi-label">Total ventes</p>
+                            <p class="kpi-value" id="summary-total-sales">...</p>
+                        </div>
+                    </article>
+                    <article class="stat-card kpi-mini" data-kpi="summary-total-value">
+                        <span class="kpi-icon" aria-hidden="true">💶</span>
+                        <div class="kpi-copy">
+                            <p class="kpi-label">Total valeur fonciere</p>
+                            <p class="kpi-value" id="summary-total-value">...</p>
+                        </div>
+                    </article>
+                    <article class="stat-card kpi-mini" data-kpi="summary-median-price">
+                        <span class="kpi-icon" aria-hidden="true">📈</span>
+                        <div class="kpi-copy">
+                            <p class="kpi-label">Prix/m² bati</p>
+                            <p class="kpi-value" id="summary-median-price">...</p>
+                        </div>
+                    </article>
                 </div>
                 <div class="stat-card legend">
                     <span><span class="dot dot-strong"></span> Forte intensite</span>

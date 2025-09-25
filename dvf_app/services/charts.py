@@ -5,7 +5,7 @@ from collections import defaultdict
 from decimal import Decimal
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from django.db.models import Case, Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value, When
+from django.db.models import Case, Count, DecimalField, ExpressionWrapper, F, Min, Max, Q, Sum, Value, When
 from django.db.models.functions import Coalesce, TruncMonth
 
 from ..models import CleanDVFRecord, Commune, Department
@@ -14,6 +14,26 @@ from ..utils import normalize_commune_code, split_commune_code
 MAX_TOP_COMMUNES = 20
 DEFAULT_TOP_COMMUNES = 10
 MAX_TYPE_CATEGORIES = 5
+
+def _price_per_sqm_expression() -> Case:
+    return Case(
+        When(
+            surface_reelle_bati__gt=0,
+            then=ExpressionWrapper(
+                F('valeur_fonciere') / F('surface_reelle_bati'),
+                output_field=DecimalField(max_digits=20, decimal_places=2),
+            ),
+        ),
+        When(
+            surface_terrain__gt=0,
+            then=ExpressionWrapper(
+                F('valeur_fonciere') / F('surface_terrain'),
+                output_field=DecimalField(max_digits=20, decimal_places=2),
+            ),
+        ),
+        default=None,
+        output_field=DecimalField(max_digits=20, decimal_places=2),
+    )
 
 DECIMAL_ZERO = Value(0, output_field=DecimalField(max_digits=20, decimal_places=2))
 
@@ -244,24 +264,7 @@ def _build_price_boxplot(records, top_type_keys: Sequence[str]) -> Dict[str, obj
     type_filter = _build_type_filter(top_type_keys)
     if type_filter is None:
         return {'items': [], 'unit': 'EUR/m2'}
-    price_expr = Case(
-        When(
-            surface_reelle_bati__gt=0,
-            then=ExpressionWrapper(
-                F('valeur_fonciere') / F('surface_reelle_bati'),
-                output_field=DecimalField(max_digits=20, decimal_places=2),
-            ),
-        ),
-        When(
-            surface_terrain__gt=0,
-            then=ExpressionWrapper(
-                F('valeur_fonciere') / F('surface_terrain'),
-                output_field=DecimalField(max_digits=20, decimal_places=2),
-            ),
-        ),
-        default=None,
-        output_field=DecimalField(max_digits=20, decimal_places=2),
-    )
+    price_expr = _price_per_sqm_expression()
     price_values: Dict[str, List[float]] = defaultdict(list)
     qs = (
         records.filter(type_filter)
@@ -289,6 +292,53 @@ def _build_price_boxplot(records, top_type_keys: Sequence[str]) -> Dict[str, obj
             }
         )
     return {'items': items, 'unit': 'EUR/m2'}
+
+
+def _collect_price_values(records) -> List[float]:
+    price_expr = _price_per_sqm_expression()
+    qs = (
+        records.exclude(valeur_fonciere__isnull=True)
+        .exclude(valeur_fonciere=0)
+        .annotate(price_per_sqm=price_expr)
+        .exclude(price_per_sqm__isnull=True)
+        .values_list('price_per_sqm', flat=True)
+    )
+    return [float(value) for value in qs.iterator()]
+
+
+def _build_global_price_stats(records) -> Optional[Dict[str, float]]:
+    samples = _collect_price_values(records)
+    return _compute_box_stats(samples) if samples else None
+
+
+def _compute_selection_metrics(records):
+    aggregates = records.aggregate(
+        total_sales=Count('id'),
+        total_value=Coalesce(Sum('valeur_fonciere'), DECIMAL_ZERO),
+        date_min=Min('date_mutation'),
+        date_max=Max('date_mutation'),
+    )
+    price_stats = _build_global_price_stats(records)
+    date_min = aggregates['date_min']
+    date_max = aggregates['date_max']
+    price_summary = None
+    if price_stats:
+        price_summary = {
+            'min': price_stats.get('min'),
+            'q1': price_stats.get('q1'),
+            'median': price_stats.get('median'),
+            'q3': price_stats.get('q3'),
+            'max': price_stats.get('max'),
+            'count': price_stats.get('count'),
+        }
+    return {
+        'total_sales': int(aggregates['total_sales'] or 0),
+        'total_value': _to_float(aggregates['total_value']),
+        'median_price_sqm': price_stats['median'] if price_stats else None,
+        'price_stats': price_summary,
+        'date_min': date_min.isoformat() if date_min else None,
+        'date_max': date_max.isoformat() if date_max else None,
+    }
 
 def _build_mutation_stack(records, top_type_keys: Sequence[str]) -> Dict[str, object]:
     type_filter = _build_type_filter(top_type_keys)
@@ -372,4 +422,11 @@ def build_chart_payload(department_code: str, commune_code: str, top_limit: int 
         for key, count in type_totals.items()
         if key in top_type_keys
     }
+    payload['metrics'] = _compute_selection_metrics(records)
     return payload
+
+
+def compute_selection_metrics(records):
+    """Expose KPI metrics for external callers using existing queryset filters."""
+    return _compute_selection_metrics(records)
+
